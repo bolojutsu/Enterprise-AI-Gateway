@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package gateway;
+
+service LLMService {
+  // Python asks Rust to run a prompt
+  rpc ExecutePrompt (PromptRequest) returns (PromptResponse);
+}
+
+message PromptRequest {
+  string model = 1;
+  string user_prompt = 2;
+}
+
+message PromptResponse {
+  string text = 1;
+  float cost = 2;
+}

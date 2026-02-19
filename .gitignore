@@ -1,0 +1,15 @@
+# Python
+python-agent/myenv/
+python-agent/__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Rust
+rust-gateway/target/
+
+# OS
+.DS_Store
+
+# IDE (optional: remove .vscode/ to share interpreter setting)
+# .vscode/

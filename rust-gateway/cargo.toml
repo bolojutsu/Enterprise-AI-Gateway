@@ -1,0 +1,22 @@
+[package]
+name = "rust-gateway"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# The multi-threaded runtime
+tokio = { version = "1.0", features = ["full"] } 
+# The gRPC library
+tonic = "0.10"
+futures = "0.3" 
+# Protobuf library
+prost = "0.12" 
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+
+[build-dependencies]
+# Required to turn your .proto file into Rust code
+tonic-build = "0.10"
