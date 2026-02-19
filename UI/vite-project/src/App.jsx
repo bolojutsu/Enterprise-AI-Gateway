@@ -26,7 +26,7 @@ function App() {
     <div style={styles.container}>
       <header style={styles.header}>
         <h1>Enterprise AI Gateway</h1>
-        <div style={{ color: stats.status === "Running" ? "#4ade80" : "#f87171" }}>
+        <div style={{ color: stats.Status === "Running" ? "#4ade80" : "#f87171" }}>
           ● {stats.status}
         </div>
       </header>
