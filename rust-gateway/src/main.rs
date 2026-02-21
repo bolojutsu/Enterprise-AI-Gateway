@@ -1,3 +1,4 @@
+mod clients;
 mod handler;
 mod service;
 mod state;
@@ -21,6 +22,8 @@ use crate::gateway::llm_service_server::LlmServiceServer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenvy::dotenv().ok();
+
     // 1. Shared State (Atomic & Thread-Safe)
     let shared_state = Arc::new(AppState::new());
 
