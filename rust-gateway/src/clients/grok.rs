@@ -24,8 +24,8 @@ pub struct Choice {
 }
 
 pub async fn call_grok(prompt: &str, model: &str) -> Result<String, ClientError> {
-    let api_key = std::env::var("Grok_API_key")
-        .map_err(|_| ClientError::ApiError("OPENAI_API_KEY not set".to_string()))?;
+    let api_key = std::env::var("GROK_API_KEY")
+        .map_err(|_| ClientError::ApiError("GROK_API_KEY not set".to_string()))?;
 
     let client = reqwest::Client::new();
 
@@ -44,7 +44,7 @@ pub async fn call_grok(prompt: &str, model: &str) -> Result<String, ClientError>
     };
 
     let response = client
-        .post("https://api.openai.com/v1/chat/completions")
+        .post("https://api.x.ai/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", api_key))
         .json(&request_body)
         .send()

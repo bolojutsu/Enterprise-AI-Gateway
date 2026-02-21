@@ -1,3 +1,4 @@
+use crate::clients::tavily::call_tavily;
 use crate::gateway::llm_service_server::LlmService;
 use crate::gateway::{PromptRequest, PromptResponse};
 use crate::state::AppState;
@@ -23,10 +24,15 @@ impl LlmService for GatewayService {
     ) -> Result<Response<PromptResponse>, Status> {
         // Increment global state
         self.state.total_requests.fetch_add(1, Ordering::Relaxed);
-
         let req = request.into_inner();
         println!("📝 Request received. User Prompt: '{}'", req.user_prompt);
-        let final_text = self.model_race(&req.user_prompt).await;
+
+        let final_text: String;
+        if req.model == "research" {
+            final_text = self.research_and_summarize(&req.user_prompt).await
+        } else {
+            final_text = self.model_race(&req.user_prompt).await
+        }
 
         Ok(Response::new(PromptResponse {
             text: final_text,
@@ -39,25 +45,61 @@ impl GatewayService {
     /// The "Race Pattern": Fires multiple models simultaneously.
     /// The first one to finish wins. The loser is automatically cancelled.
     async fn model_race(&self, prompt: &str) -> String {
-        println!("🏎️  Starting the Model Race...");
+        println!("🏎️  Starting the Real-World Model Race...");
 
-        // Create the "Futures" (the tasks), but don't .await them yet!
-        let task1 = call_openai(prompt, "gpt-4o");
-        let task2 = call_gemini(prompt, "gemini-1.5-flash");
-        let task3 = call_claude(prompt, "claude-3-haiku");
-        let task4 = call_grok(prompt, "grok-4");
+        let openai_task = call_openai(prompt, "gpt-4o");
+        let grok_task = call_grok(prompt, "grok-beta");
+        let gemini_task = call_gemini(prompt, "gemini-1.5-flask");
+        let claude_task = call_claude(prompt, "claude-4o");
 
-        // Pin the futures so select! can track them in memory
-        tokio::pin!(task1);
-        tokio::pin!(task2);
-        tokio::pin!(task3);
-        tokio::pin!(task4);
+        tokio::pin!(openai_task);
+        tokio::pin!(grok_task);
+        tokio::pin!(gemini_task);
 
         select! {
-            res = task1 => format!("🥇 OpenAI won: {}", res.unwrap_or_default()),
-            res = task2 => format!("🥇 Gemini won: {}", res.unwrap_or_default()),
-            res = task3 => format!("🥇 Claude won: {}", res.unwrap_or_default()),
-            res = task4 => format!("🥇 Grok Won: {}", res.unwrap_or_default()),
+            res = openai_task => self.format_winner("OpenAI", res),
+            res = grok_task => self.format_winner("Grok", res),
+            res = gemini_task => self.format_winner("Gemini", res),
+            res = claude_task => self.format_winner("Claude", res),
+        }
+    }
+
+    // helper method to format the winner
+    fn format_winner(
+        &self,
+        name: &str,
+        result: Result<String, crate::clients::ClientError>,
+    ) -> String {
+        match result {
+            Ok(text) => {
+                println!("{} won the race!", name);
+                text
+            }
+            Err(e) => {
+                println!("❌ {} failed: {:?}", name, e);
+                format!("Error from {}: {:?}", name, e)
+            }
+        }
+    }
+
+    async fn research_and_summarize(&self, prompt: &str) -> String {
+        println!("Reasurching via Tavily");
+
+        // 1. get search results
+        let search_results = match call_tavily(prompt).await {
+            Ok(results) => results,
+            Err(e) => return format!("Search failed: {:?}", e),
+        };
+
+        // feed results to a fast model like gemini for summary
+        let grounded_prompt = format!(
+            "Based on these search results: \n\n{}\n\n Please answer the user: {}",
+            search_results, prompt
+        );
+
+        match call_gemini(&grounded_prompt, "gemini-1.5-flash").await {
+            Ok(summary) => summary,
+            Err(_) => search_results,
         }
     }
 
