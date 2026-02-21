@@ -12,3 +12,19 @@ pub async fn get_rest_stats(State(state): State<Arc<AppState>>) -> Json<Value> {
         "uptime": "stable"
     }))
 }
+
+pub async fn get_leader_board_state(State(state): State<Arc<AppState>>) -> Json<Value> {
+    let results: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT winner, COUNT(*) as win_count FROM request_logs GROUP BY winner ORDER BY win_count DESC",
+    )
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    let leaderboard: Vec<Value> = results
+        .into_iter()
+        .map(|(winner, win_count)| json!({ "winner": winner, "win_count": win_count }))
+        .collect();
+
+    Json(json!({ "leaderboard": leaderboard }))
+}

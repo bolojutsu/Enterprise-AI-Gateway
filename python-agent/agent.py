@@ -1,6 +1,7 @@
 import grpc
 import gateway_pb2
 import gateway_pb2_grpc
+import time
 
 
 class GatewayAgent:

@@ -4,13 +4,15 @@ mod service;
 mod state;
 
 use axum::{routing::get, Router};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tower_http::cors::CorsLayer;
 
-// Modules we just created
-use crate::handler::get_rest_stats;
+// Internal imports
+use crate::handler::{get_leader_board_state, get_rest_stats};
 use crate::service::GatewayService;
 use crate::state::AppState;
 
@@ -24,8 +26,21 @@ use crate::gateway::llm_service_server::LlmServiceServer;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
 
+    let db_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://gateway.db".to_string());
+
+    let connection_options = SqliteConnectOptions::from_str(&db_url)?.create_if_missing(true);
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect_with(connection_options)
+        .await?;
+
+    sqlx::migrate!("./migrations").run(&pool).await?;
+    println!("✅ Database connected and migrations applied.");
+
     // 1. Shared State (Atomic & Thread-Safe)
-    let shared_state = Arc::new(AppState::new());
+    let shared_state = Arc::new(AppState::new(pool));
 
     // 2. gRPC Infrastructure (For Python Agent)
     let grpc_addr: SocketAddr = "[::1]:50051".parse()?;
@@ -46,6 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rest_addr: SocketAddr = "127.0.0.1:3000".parse()?;
     let rest_app = Router::new()
         .route("/stats", get(get_rest_stats))
+        .route("/leaderboard", get(get_leader_board_state))
         .with_state(Arc::clone(&shared_state))
         .layer(CorsLayer::permissive());
 

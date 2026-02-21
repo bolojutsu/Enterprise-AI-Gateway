@@ -1,15 +1,16 @@
-use crate::clients::tavily::call_tavily;
 use crate::gateway::llm_service_server::LlmService;
 use crate::gateway::{PromptRequest, PromptResponse};
 use crate::state::AppState;
 
 use crate::clients::claud::call_claude;
 use crate::clients::gemini::call_gemini;
-use crate::clients::grok::call_grok;
 use crate::clients::openai::call_openai;
+use crate::clients::tavily::call_tavily;
 
 use std::sync::{atomic::Ordering, Arc};
+use std::time::Instant;
 use tokio::select;
+use uuid::Uuid;
 
 use tonic::{Request, Response, Status};
 pub struct GatewayService {
@@ -27,12 +28,28 @@ impl LlmService for GatewayService {
         let req = request.into_inner();
         println!("📝 Request received. User Prompt: '{}'", req.user_prompt);
 
+        let start = Instant::now();
         let final_text: String;
+        let mode: &str;
+
         if req.model == "research" {
+            mode = "research";
             final_text = self.research_and_summarize(&req.user_prompt).await
         } else {
+            mode = "race";
             final_text = self.model_race(&req.user_prompt).await
         }
+
+        let duration = start.elapsed().as_millis() as u64;
+
+        let winner = if mode == "research" {
+            "Tavily+Gemini"
+        } else {
+            "RaceWinner"
+        };
+
+        self.log_to_db(&req.user_prompt, winner, &final_text, duration, mode)
+            .await;
 
         Ok(Response::new(PromptResponse {
             text: final_text,
@@ -48,17 +65,17 @@ impl GatewayService {
         println!("🏎️  Starting the Real-World Model Race...");
 
         let openai_task = call_openai(prompt, "gpt-4o");
-        let grok_task = call_grok(prompt, "grok-beta");
-        let gemini_task = call_gemini(prompt, "gemini-1.5-flask");
-        let claude_task = call_claude(prompt, "claude-4o");
+        // let grok_task = call_grok(prompt, "grok-2");
+        let gemini_task = call_gemini(prompt, "gemini-1.5-flash");
+        let claude_task = call_claude(prompt, "claude-3-haiku");
 
         tokio::pin!(openai_task);
-        tokio::pin!(grok_task);
         tokio::pin!(gemini_task);
+        tokio::pin!(claude_task);
 
         select! {
             res = openai_task => self.format_winner("OpenAI", res),
-            res = grok_task => self.format_winner("Grok", res),
+            // res = grok_task => self.format_winner("Grok", res),
             res = gemini_task => self.format_winner("Gemini", res),
             res = claude_task => self.format_winner("Claude", res),
         }
@@ -82,8 +99,35 @@ impl GatewayService {
         }
     }
 
+    async fn log_to_db(
+        &self,
+        prompt: &str,
+        winner: &str,
+        response: &str,
+        duration: u64,
+        mode: &str,
+    ) {
+        let id = uuid::Uuid::new_v4().to_string();
+
+        let result = sqlx::query(
+            "INSERT INTO request_logs (id, prompt, winner, response_text, duration_ms, mode) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(prompt)
+        .bind(winner)
+        .bind(response)
+        .bind(duration as i64)
+        .bind(mode)
+        .execute(&self.state.db)
+        .await;
+
+        if let Err(e) = result {
+            println!("❌ Database Log Error: {:?}", e);
+        }
+    }
+
     async fn research_and_summarize(&self, prompt: &str) -> String {
-        println!("Reasurching via Tavily");
+        println!("Researching via Tavily");
 
         // 1. get search results
         let search_results = match call_tavily(prompt).await {
