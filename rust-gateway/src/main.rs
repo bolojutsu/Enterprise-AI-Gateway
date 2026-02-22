@@ -12,7 +12,7 @@ use tonic::transport::Server;
 use tower_http::cors::CorsLayer;
 
 // Internal imports
-use crate::handler::{get_leader_board_state, get_rest_stats};
+use crate::handler::{get_leader_board_state, get_recent_logs, get_rest_stats};
 use crate::service::GatewayService;
 use crate::state::AppState;
 
@@ -62,6 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rest_app = Router::new()
         .route("/stats", get(get_rest_stats))
         .route("/leaderboard", get(get_leader_board_state))
+        .route("/logs", get(get_recent_logs))
         .with_state(Arc::clone(&shared_state))
         .layer(CorsLayer::permissive());
 

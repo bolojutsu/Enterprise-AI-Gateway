@@ -27,7 +27,7 @@ class GatewayAgent:
         print(f"\n🧠 Agent received query: '{query}'")
 
         # Heuristic: If the query asks for real-time/latest data, use research mode
-        research_triggers = ["latest", "current", "news", "stock", "price"]
+        research_triggers = ["Explain", "latest", "current", "news", "stock", "price"]
         if any(word in query.lower() for word in research_triggers):
             print("🔍 Strategy: Research Mode (Tavily + Gemini)")
             mode = "research"
@@ -50,4 +50,4 @@ if __name__ == "__main__":
     print(agent.run_smart_query("Explain recursion in one sentence."))
 
     # Test Query 2: Real-time Data (Triggers Research)
-    print(agent.run_smart_query("What is the current price of Bitcoin?"))
+    print(agent.run_smart_query("what is the current price of bitcoin?"))

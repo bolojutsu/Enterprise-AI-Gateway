@@ -10,7 +10,6 @@ use crate::clients::tavily::call_tavily;
 use std::sync::{atomic::Ordering, Arc};
 use std::time::Instant;
 use tokio::select;
-use uuid::Uuid;
 
 use tonic::{Request, Response, Status};
 pub struct GatewayService {
@@ -45,7 +44,7 @@ impl LlmService for GatewayService {
         let winner = if mode == "research" {
             "Tavily+Gemini"
         } else {
-            "RaceWinner"
+            "Race Winner"
         };
 
         self.log_to_db(&req.user_prompt, winner, &final_text, duration, mode)

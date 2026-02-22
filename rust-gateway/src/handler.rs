@@ -28,3 +28,22 @@ pub async fn get_leader_board_state(State(state): State<Arc<AppState>>) -> Json<
 
     Json(json!({ "leaderboard": leaderboard }))
 }
+
+pub async fn get_recent_logs(State(state): State<Arc<AppState>>) -> Json<Value> {
+    let logs: Vec<Value> = sqlx::query!(
+        "SELECT prompt, winner, response_text, duration_ms FROM request_logs ORDER BY created_at DESC LIMIT 5"
+    )
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|row| json!({
+        "prompt": row.prompt,
+        "winner": row.winner,
+        "response": row.response_text,
+        "latency": row.duration_ms
+    }))
+    .collect();
+
+    Json(json!({ "logs": logs }))
+}
