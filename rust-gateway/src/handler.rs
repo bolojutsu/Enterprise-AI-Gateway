@@ -47,3 +47,26 @@ pub async fn get_recent_logs(State(state): State<Arc<AppState>>) -> Json<Value> 
 
     Json(json!({ "logs": logs }))
 }
+
+// Inside handler.rs
+pub async fn handle_test_query(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    let prompt = payload["prompt"].as_str().unwrap_or("Hello");
+    let mode = payload["mode"].as_str().unwrap_or("race");
+
+    // We manually call our own internal service logic here
+    // In a real app, this would be the gRPC call from Python
+    let start = std::time::Instant::now();
+
+    // Simulate a race (For demo purposes, just call one or use your internal logic)
+    let response = "This is a simulated response from the gateway engine.";
+    let duration = start.elapsed().as_millis() as u64;
+
+    Json(json!({
+        "winner": "OpenAI (Simulated)",
+        "response": response,
+        "latency": duration
+    }))
+}

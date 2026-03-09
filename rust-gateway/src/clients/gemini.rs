@@ -34,8 +34,8 @@ pub async fn call_gemini(prompt: &str, model: &str) -> Result<String, ClientErro
         "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
         model, api_key
     );
-    let client = reqwest::Client::new();
-    let body = GeminiRequest {
+    let client: reqwest::Client = reqwest::Client::new();
+    let body: GeminiRequest = GeminiRequest {
         contents: vec![GeminiContent {
             parts: vec![GeminiPart {
                 text: prompt.to_string(),
@@ -43,7 +43,7 @@ pub async fn call_gemini(prompt: &str, model: &str) -> Result<String, ClientErro
         }],
     };
 
-    let res = client
+    let res: GeminiResponse = client
         .post(url)
         .json(&body)
         .send()
